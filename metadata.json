@@ -1,0 +1,10 @@
+{
+  "name": "Aleta Wondo Youth Mutual Aid Edir",
+  "description": "Bilingual (Amharic & English) community management, financial ledger, role-based approval, asset tracking, and digital ID platform for የአለታ ወንዶ ወጣቶች በሁሉ ቦታ መረዳጃ ዕድር.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
