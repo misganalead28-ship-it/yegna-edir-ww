@@ -80,7 +80,7 @@ export interface PaymentReceipt {
   specialContributionId?: string;
   amount: number;
   penaltyIncluded: number;
-  channel: 'CBE' | 'Telebirr' | 'Bank of Abyssinia' | 'Cashier Direct';
+  channel: 'CBE' | 'Coop';
   referenceNumber: string;
   paymentDate: string;
   receiptFileName?: string;
@@ -89,6 +89,8 @@ export interface PaymentReceipt {
   reviewerNote?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  authorizedByVc?: string;
+  authorizedAtVc?: string;
   submittedAt: string;
 }
 
@@ -294,6 +296,9 @@ export interface BillingConfig {
   latePenaltyFee: number;
   activeBillingMonths: string[]; // e.g., ['2026-06', ..., '2026-11']
   openingBalance: number;
+  cbeAccountNumber?: string;
+  cbeAccountName?: string;
+  coopAccountNumber?: string;
 }
 
 export interface EdirState {

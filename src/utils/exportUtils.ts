@@ -48,8 +48,8 @@ export function formatWhatsAppSmsMessage(
 ): string {
   if (type === 'overdue') {
     return lang === 'am'
-      ? `ሰላም ${params.memberName || 'ውድ አባላችን'}፣ ከአለታ ወንዶ ወጣቶች መረዳጃ ዕድር ነው። የ${params.overdueMonths || 1} ወራት ውዝፍ እና የልዩ መዋጮ ክፍያ ጠቅላላ ${params.amount || 0} ብር ስላለብዎት እባክዎ በCBE ወይም Telebirr ከፍለው ደረሰኝዎን በሲስተሙ ላይ አታች ያድርጉ። እናመሰግናለን!`
-      : `Dear ${params.memberName || 'Member'}, reminder from Aleta Wondo Youth Mutual Aid Edir: You have an outstanding balance of ${params.amount || 0} ETB (${params.overdueMonths || 1} overdue month(s)). Please settle via CBE or Telebirr and upload your receipt on the member portal. Thank you!`;
+      ? `ሰላም ${params.memberName || 'ውድ አባላችን'}፣ ከአለታ ወንዶ ወጣቶች መረዳጃ ዕድር ነው። የ${params.overdueMonths || 1} ወራት ውዝፍ እና የልዩ መዋጮ ክፍያ ጠቅላላ ${params.amount || 0} ብር ስላለብዎት እባክዎ በCBE (1000772333898) ወይም Coop (1062700129895) ከፍለው ደረሰኝዎን በሲስተሙ ላይ አታች ያድርጉ። እናመሰግናለን!`
+      : `Dear ${params.memberName || 'Member'}, reminder from Aleta Wondo Youth Mutual Aid Edir: You have an outstanding balance of ${params.amount || 0} ETB (${params.overdueMonths || 1} overdue month(s)). Please settle via CBE (1000772333898) or Coop (1062700129895) and upload your receipt on the member portal. Thank you!`;
   }
 
   if (type === 'meeting') {

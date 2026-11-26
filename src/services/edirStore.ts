@@ -57,16 +57,29 @@ export function loadCachedState(): EdirState {
         ...INITIAL_EDIR_STATE,
         ...parsed,
         members: mergedMembers,
-        billingConfig: {
+        billingConfig: normalizeBillingConfig({
           ...INITIAL_EDIR_STATE.billingConfig,
           ...(parsed.billingConfig || {}),
-        },
+        }),
       };
     }
   } catch {
     // Ignore storage read errors
   }
   return INITIAL_EDIR_STATE;
+}
+
+function normalizeBillingConfig(
+  cfg: EdirState['billingConfig']
+): EdirState['billingConfig'] {
+  return {
+    ...cfg,
+    cbeAccountNumber:
+      !cfg.cbeAccountNumber || cfg.cbeAccountNumber === '1000482910384'
+        ? '1000772333898'
+        : cfg.cbeAccountNumber,
+    coopAccountNumber: cfg.coopAccountNumber || '1062700129895',
+  };
 }
 
 export function saveCachedState(state: EdirState): void {
@@ -180,7 +193,11 @@ export function subscribeToEdirFirestore(
     doc(db, 'settings', 'billingConfig'),
     (docSnap) => {
       if (docSnap.exists()) {
-        onPatch({ billingConfig: docSnap.data() as EdirState['billingConfig'] });
+        onPatch({
+          billingConfig: normalizeBillingConfig(
+            docSnap.data() as EdirState['billingConfig']
+          ),
+        });
       }
     },
     () => {

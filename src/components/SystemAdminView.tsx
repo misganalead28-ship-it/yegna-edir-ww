@@ -4,8 +4,11 @@ import {
   Copy,
   Database,
   Download,
+  Eye,
+  EyeOff,
   KeyRound,
   LockOpen,
+  Search,
   Settings,
   ShieldCheck,
   Sliders,
@@ -74,6 +77,12 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
   const [openingBalance, setOpeningBalance] = useState(
     state.billingConfig.openingBalance
   );
+  const [cbeAccountNumber, setCbeAccountNumber] = useState(
+    state.billingConfig.cbeAccountNumber || '1000772333898'
+  );
+  const [coopAccountNumber, setCoopAccountNumber] = useState(
+    state.billingConfig.coopAccountNumber || '1062700129895'
+  );
   const [newBillingMonth, setNewBillingMonth] = useState('2026-12');
 
   // Benefit schedule draft amounts
@@ -86,6 +95,8 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [showUserList, setShowUserList] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Strict UI-level guard: only Misgana Tesfaye (Auditor + IT System Admin)
   const isAuthorizedItAdmin =
@@ -322,16 +333,54 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
                 className="w-28 text-xs font-mono font-semibold text-slate-900 bg-transparent focus:outline-none"
               />
             </div>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={COPY[lang].searchPlaceholder}
-              className="w-full sm:w-64 px-3 py-2 text-xs border border-slate-200 rounded-lg"
-            />
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={COPY[lang].searchPlaceholder}
+                className="w-full sm:w-64 pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowUserList((v) => !v)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap"
+            >
+              {showUserList ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span>
+                {showUserList
+                  ? getText(lang, 'ዝርዝር ደብቅ', 'Hide User List')
+                  : getText(lang, 'የተጠቃሚዎች ዝርዝር አሳይ', 'View User List')}
+              </span>
+            </button>
           </div>
         </div>
 
+        {/* Summary Counters (Shown by Default) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <p className="text-xs text-slate-500">{getText(lang, 'ንቁ መለያዎች', 'Active Accounts')}</p>
+            <p className="mt-1 text-xl font-bold font-mono tabular-nums text-[#064E3B]">
+              {state.members.filter((m) => m.accessStatus === 'active' && !m.locked).length}
+            </p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <p className="text-xs text-slate-500">{getText(lang, 'ፈቃድ የሚጠብቁ', 'Pending Access')}</p>
+            <p className="mt-1 text-xl font-bold font-mono tabular-nums text-[#D97706]">
+              {state.members.filter((m) => m.accessStatus === 'pending').length}
+            </p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <p className="text-xs text-slate-500">{getText(lang, 'የታገዱ / የተቆለፉ', 'Suspended / Locked')}</p>
+            <p className="mt-1 text-xl font-bold font-mono tabular-nums text-red-700">
+              {state.members.filter((m) => m.accessStatus === 'suspended' || m.locked).length}
+            </p>
+          </div>
+        </div>
+
+        {(showUserList || search.trim().length > 0) && (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -491,9 +540,42 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {/* 2. Technical System Settings & Benefit Payout Schedule Config */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#064E3B]">
+            {getText(
+              lang,
+              'የክፍያ ተመን፣ የቅጣት እና የጥቅማጥቅም ቅንብሮች',
+              'Dues, Late Penalty & Benefit Payout Settings'
+            )}
+          </h3>
+          <p className="text-xs text-slate-500">
+            {getText(
+              lang,
+              'ሲፈለግ ብቻ ለማስተካከል ክፈትን ይጫኑ።',
+              'Open technical billing and benefit schedule configuration when needed.'
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowSettings((v) => !v)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-semibold rounded-lg cursor-pointer shrink-0"
+        >
+          {showSettings ? <EyeOff className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
+          <span>
+            {showSettings
+              ? getText(lang, 'ቅንብር ደብቅ', 'Hide Settings')
+              : getText(lang, 'ቅንብሮችን አሳይ', 'Open Settings')}
+          </span>
+        </button>
+      </div>
+
+      {showSettings && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <section className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
@@ -515,12 +597,14 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
                 monthlyFee,
                 latePenaltyFee,
                 openingBalance,
+                cbeAccountNumber: cbeAccountNumber.trim(),
+                coopAccountNumber: coopAccountNumber.trim(),
               });
               setActionNotice(
                 getText(
                   lang,
-                  'የክፍያ እና የቅጣት ቅንብሮች ተቀምጠዋል።',
-                  'Billing rates & automatic penalty rules updated.'
+                  'የክፍያ እና የባንክ መለያ ቅንብሮች ተቀምጠዋል።',
+                  'Billing rates & official payment accounts updated.'
                 )
               );
             }}
@@ -561,6 +645,33 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
                 onChange={(e) => setOpeningBalance(Number(e.target.value))}
                 className="w-full px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg"
               />
+            </div>
+            <div className="pt-2 border-t border-slate-100 space-y-2.5">
+              <p className="text-xs font-bold text-[#064E3B]">
+                {getText(lang, 'የዕድሩ ይፋዊ የክፍያ አካውንቶች', 'Official Edir Payment Accounts')}
+              </p>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  {getText(lang, 'CBE ሂሳብ ቁጥር', 'CBE Account Number')}
+                </label>
+                <input
+                  type="text"
+                  value={cbeAccountNumber}
+                  onChange={(e) => setCbeAccountNumber(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs font-mono border border-slate-200 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  {getText(lang, 'Coop ባንክ ሂሳብ ቁጥር', 'Coop Bank Account Number')}
+                </label>
+                <input
+                  type="text"
+                  value={coopAccountNumber}
+                  onChange={(e) => setCoopAccountNumber(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs font-mono border border-slate-200 rounded-lg"
+                />
+              </div>
             </div>
             <button
               type="submit"
@@ -687,6 +798,7 @@ export const SystemAdminView: React.FC<SystemAdminViewProps> = ({
           </div>
         </section>
       </div>
+      )}
     </div>
   );
 };

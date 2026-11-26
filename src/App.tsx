@@ -1,16 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Banknote,
-  FileBarChart2,
   Globe,
+  IdCard,
   KeyRound,
-  LayoutDashboard,
+  LayoutGrid,
   LogOut,
-  Menu,
-  Package,
-  ShieldCheck,
-  Users,
-  X,
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -33,6 +27,7 @@ import {
   MeetingSession,
   MemberRecord,
   PaymentReceipt,
+  ResidenceZone,
   Role,
   SpecialContribution,
 } from './types';
@@ -52,15 +47,16 @@ import {
 import { DEFAULT_TEMP_PASSWORD, hashPassword } from './utils/password';
 import { GoogleAuthPayload, LoginView } from './components/LoginView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
-import {
-  ConsolidatedRoute,
-  ExecutiveOverview,
-} from './components/ExecutiveOverview';
-import { FinanceModule } from './components/FinanceModule';
-import { MembersAndAdminModule } from './components/MembersAndAdminModule';
-import { OperationsModule } from './components/OperationsModule';
-import { InfoAndReportsModule } from './components/InfoAndReportsModule';
+import { ChairmanModule } from './components/ChairmanModule';
+import { ViceChairmanModule } from './components/ViceChairmanModule';
+import { SecretaryModule } from './components/SecretaryModule';
+import { CashierModule } from './components/CashierModule';
+import { AuditorAdminModule } from './components/AuditorAdminModule';
+import { PrModule } from './components/PrModule';
+import { CommitteeOpsModule } from './components/CommitteeOpsModule';
 import { MemberSelfServicePortal } from './components/MemberSelfServicePortal';
+import { PWAInstallButton } from './components/PWAInstallButton';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 const isItSystemAdmin = (user: MemberRecord | null): boolean =>
   Boolean(user && (user.role === 'auditor' || user.isItAdmin));
@@ -69,8 +65,7 @@ export default function App() {
   const [lang, setLang] = useState<Language>('am');
   const [state, setState] = useState<EdirState>(() => loadCachedState());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [activeRoute, setActiveRoute] = useState<ConsolidatedRoute>('overview');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPersonalPortal, setShowPersonalPortal] = useState(false);
 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
@@ -173,22 +168,12 @@ export default function App() {
     });
   };
 
-  const getDefaultRouteForRole = (role: Role): ConsolidatedRoute => {
-    if (role === 'member') return 'member_portal';
-    if (role === 'cashier') return 'finance';
-    if (role === 'auditor') return 'members';
-    if (role === 'secretary') return 'members';
-    if (role === 'pr') return 'info_reports';
-    return 'overview';
-  };
-
   const handleLoginSuccess = (
     member: MemberRecord,
     usedDefaultTemp = false
   ) => {
     setCurrentUserId(member.id);
-    setActiveRoute(getDefaultRouteForRole(member.role));
-    setMobileMenuOpen(false);
+    setShowPersonalPortal(false);
     if (usedDefaultTemp) {
       setForcePasswordChange(true);
       setShowChangePassword(true);
@@ -272,8 +257,7 @@ export default function App() {
         return next;
       });
       setCurrentUserId(upgraded.id);
-      setActiveRoute(getDefaultRouteForRole(upgraded.role));
-      setMobileMenuOpen(false);
+      setShowPersonalPortal(false);
       return { ok: true };
     }
 
@@ -324,8 +308,7 @@ export default function App() {
         return next;
       });
       setCurrentUserId(newAdmin.id);
-      setActiveRoute('members');
-      setMobileMenuOpen(false);
+      setShowPersonalPortal(false);
       return { ok: true };
     }
 
@@ -377,7 +360,7 @@ export default function App() {
     setCurrentUserId(null);
     setForcePasswordChange(false);
     setShowChangePassword(false);
-    setMobileMenuOpen(false);
+    setShowPersonalPortal(false);
   };
 
   // ============================================================================
@@ -655,7 +638,17 @@ export default function App() {
   };
 
   const handleRegisterMember = (
-    payload: Omit<MemberRecord, 'id' | 'memberCode' | 'qrToken' | 'paidMonths'>
+    payload: Omit<
+      MemberRecord,
+      | 'id'
+      | 'memberCode'
+      | 'joinedDate'
+      | 'paidMonths'
+      | 'qrToken'
+      | 'registeredBy'
+      | 'accessStatus'
+      | 'approvalStatus'
+    >
   ): MemberRecord => {
     const num = state.members.length + 1;
     const code = `EAW-${String(num).padStart(3, '0')}`;
@@ -665,8 +658,12 @@ export default function App() {
       ...payload,
       id,
       memberCode: code,
+      joinedDate: new Date().toISOString().slice(0, 10),
       qrToken: `EAW-ID:${code}:${id}`,
       paidMonths: [],
+      registeredBy: currentUser?.fullNameEn || 'Zenaye Tesema (Secretary)',
+      accessStatus: 'pending',
+      approvalStatus: 'pending_chairman',
       mustChangePassword: true,
       defaultTempPassword: tempPwd,
     };
@@ -697,9 +694,18 @@ export default function App() {
   };
 
   const handleImportLegacyMembers = (
-    rows: Omit<MemberRecord, 'id' | 'memberCode' | 'qrToken' | 'paidMonths'>[]
+    rows: {
+      fullNameAm: string;
+      fullNameEn: string;
+      phone: string;
+      email: string;
+      residenceZone: ResidenceZone;
+      residenceCityAm: string;
+      residenceCityEn: string;
+    }[]
   ): MemberRecord[] => {
     const startNum = state.members.length + 1;
+    const today = new Date().toISOString().slice(0, 10);
     const created: MemberRecord[] = rows.map((row, idx) => {
       const code = `EAW-${String(startNum + idx).padStart(3, '0')}`;
       const id = `mem-imp-${Date.now()}-${idx}`;
@@ -707,8 +713,14 @@ export default function App() {
         ...row,
         id,
         memberCode: code,
+        role: 'member',
+        joinedDate: today,
         qrToken: `EAW-ID:${code}:${id}`,
         paidMonths: [],
+        familyMembers: [],
+        registeredBy: currentUser?.fullNameEn || 'Zenaye Tesema (Secretary)',
+        accessStatus: 'pending',
+        approvalStatus: 'pending_chairman',
         mustChangePassword: true,
         defaultTempPassword: DEFAULT_TEMP_PASSWORD,
       };
@@ -968,6 +980,8 @@ export default function App() {
     decision: 'verified' | 'rejected',
     note?: string
   ) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const isVc = currentUser?.role === 'vice_chairman';
     commitState(
       (prev) => {
         const target = prev.paymentReceipts.find((r) => r.id === receiptId);
@@ -978,7 +992,13 @@ export default function App() {
                 status: decision,
                 reviewerNote: note,
                 reviewedBy: currentUser?.fullNameEn,
-                reviewedAt: new Date().toISOString().slice(0, 10),
+                reviewedAt: today,
+                ...(isVc
+                  ? {
+                      authorizedByVc: currentUser?.fullNameEn,
+                      authorizedAtVc: today,
+                    }
+                  : {}),
               }
             : r
         );
@@ -1017,9 +1037,16 @@ export default function App() {
         return { ...prev, paymentReceipts, members, specialContributions };
       },
       {
-        action: decision === 'verified' ? 'RECEIPT_VERIFIED' : 'RECEIPT_REJECTED',
+        action:
+          decision === 'verified'
+            ? isVc
+              ? 'RECEIPT_AUTHORIZED_BY_VC'
+              : 'RECEIPT_VERIFIED'
+            : 'RECEIPT_REJECTED',
         module: 'Finance',
-        details: `Cashier ${decision} receipt ${receiptId}.`,
+        details: `${
+          isVc ? 'Vice Chairman' : 'Cashier'
+        } ${decision} receipt ${receiptId}.`,
       }
     );
   };
@@ -1350,48 +1377,6 @@ export default function App() {
     );
   };
 
-  // Consolidated Sidebar Navigation for Committee Officers
-  const navItems = useMemo(() => {
-    if (!currentUser || currentUser.role === 'member') return [];
-    const items: {
-      id: ConsolidatedRoute;
-      label: string;
-      icon: React.ReactNode;
-    }[] = [
-      {
-        id: 'overview',
-        label: COPY[lang].navOverview,
-        icon: <LayoutDashboard className="w-4 h-4" />,
-      },
-      {
-        id: 'finance',
-        label: COPY[lang].navFinanceModule,
-        icon: <Banknote className="w-4 h-4" />,
-      },
-      {
-        id: 'members',
-        label: COPY[lang].navMembersModule,
-        icon: <Users className="w-4 h-4" />,
-      },
-      {
-        id: 'operations',
-        label: COPY[lang].navOperationsModule,
-        icon: <Package className="w-4 h-4" />,
-      },
-      {
-        id: 'info_reports',
-        label: COPY[lang].navInfoReportsModule,
-        icon: <FileBarChart2 className="w-4 h-4" />,
-      },
-      {
-        id: 'member_portal',
-        label: COPY[lang].navMemberPortal,
-        icon: <ShieldCheck className="w-4 h-4" />,
-      },
-    ];
-    return items;
-  }, [currentUser, lang]);
-
   // ============================================================================
   // RENDER LOGIN IF NOT SIGNED IN
   // ============================================================================
@@ -1408,293 +1393,264 @@ export default function App() {
   }
 
   const isCommitteeUser = currentUser.role !== 'member';
-  const activeRouteTitle =
-    currentUser.role === 'member'
-      ? COPY[lang].navMemberPortal
-      : navItems.find((i) => i.id === activeRoute)?.label || ORG_NAME.shortEn;
+
+  const getRoleModuleTitle = () => {
+    if (currentUser.role === 'member' || showPersonalPortal) {
+      return COPY[lang].navMemberPortal;
+    }
+    switch (currentUser.role) {
+      case 'chairman':
+        return getText(lang, 'የዋና ሰብሳቢ ክፍል', 'Chairman Module');
+      case 'vice_chairman':
+        return getText(lang, 'የምክትል ሰብሳቢ ክፍል', 'Vice Chairman Module');
+      case 'secretary':
+        return getText(lang, 'የጸሐፊ ክፍል', 'Secretary Module');
+      case 'cashier':
+        return getText(lang, 'የገንዘብ ያዥ ክፍል', 'Cashier Module');
+      case 'auditor':
+        return getText(
+          lang,
+          'የኦዲተር እና የሲስተም አስተዳደር',
+          'Auditor & IT Admin Module'
+        );
+      case 'pr':
+        return getText(lang, 'የህዝብ ግንኙነት ክፍል', 'Public Relations Module');
+      case 'committee':
+        return getText(lang, 'የኮሚቴ አባል ክፍል', 'Committee Operations Module');
+      default:
+        return getText(lang, ORG_NAME.shortAm, ORG_NAME.shortEn);
+    }
+  };
+
+  const renderRoleWorkspace = () => {
+    if (currentUser.role === 'member' || showPersonalPortal) {
+      return (
+        <MemberSelfServicePortal
+          lang={lang}
+          currentUser={currentUser}
+          state={state}
+          onSubmitReceipt={handleSubmitReceipt}
+          onSubmitEmergency={handleSubmitEmergency}
+          onSubmitRequest={handleSubmitRequest}
+          onUpdateFamily={handleUpdateFamily}
+          onUpdatePhoto={handleUpdatePhoto}
+          onScanAttendance={handleScanAttendance}
+        />
+      );
+    }
+
+    switch (currentUser.role) {
+      case 'chairman':
+        return (
+          <ChairmanModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onIssueDirective={handleIssueDirective}
+            onCreateMeeting={handleCreateMeeting}
+            onCloseMeeting={handleCloseMeeting}
+            onApproveMember={handleApproveMember}
+            onAdvanceRequest={handleAdvanceRequest}
+            onResolveEmergency={handleResolveEmergency}
+          />
+        );
+      case 'vice_chairman':
+        return (
+          <ViceChairmanModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onCreateDisbursement={handleCreateDisbursement}
+            onAuthorizeDisbursement={handleAuthorizeDisbursement}
+            onVerifyMemberReceipt={handleVerifyReceipt}
+            onAdvanceRequest={handleAdvanceRequest}
+          />
+        );
+      case 'secretary':
+        return (
+          <SecretaryModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onRegisterMember={handleRegisterMember}
+            onImportLegacyMembers={handleImportLegacyMembers}
+            onUpdatePhoto={handleUpdatePhoto}
+            onMarkAttendance={handleMarkAttendance}
+            onScanAttendance={handleScanAttendance}
+            onUploadDocument={handleUploadDocument}
+          />
+        );
+      case 'cashier':
+        return (
+          <CashierModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onVerifyReceipt={handleVerifyReceipt}
+            onCreateSpecialContribution={handleCreateSpecialContribution}
+            onExecuteDisbursement={handleExecuteDisbursement}
+            onSaveReconciliation={handleSaveReconciliation}
+          />
+        );
+      case 'auditor':
+        return (
+          <AuditorAdminModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            firebaseStatus={firebaseStatus}
+            onManageAccess={handleManageAccess}
+            onResetPasswordAndUnlock={handleResetPasswordAndUnlock}
+            onUpdateBillingConfig={handleUpdateBillingConfig}
+            onUpdateBenefitRule={handleUpdateBenefitRule}
+            onSyncFirebase={handleSyncFirebase}
+          />
+        );
+      case 'pr':
+        return (
+          <PrModule
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onPublishAnnouncement={handlePublishAnnouncement}
+            onUploadDocument={handleUploadDocument}
+          />
+        );
+      case 'committee':
+        return (
+          <CommitteeOpsModule
+            lang={lang}
+            state={state}
+            onAssetAction={handleAssetAction}
+            onAddAsset={handleAddAsset}
+            onResolveEmergency={handleResolveEmergency}
+          />
+        );
+      default:
+        return (
+          <MemberSelfServicePortal
+            lang={lang}
+            currentUser={currentUser}
+            state={state}
+            onSubmitReceipt={handleSubmitReceipt}
+            onSubmitEmergency={handleSubmitEmergency}
+            onSubmitRequest={handleSubmitRequest}
+            onUpdateFamily={handleUpdateFamily}
+            onUpdatePhoto={handleUpdatePhoto}
+            onScanAttendance={handleScanAttendance}
+          />
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Compact Consolidated Sidebar (Only for Committee Officers; Members get full-width 4-button portal) */}
-      {isCommitteeUser && (
-        <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-[#064E3B] text-white shrink-0 no-print">
-          <div className="h-16 px-5 flex items-center gap-3 border-b border-white/10">
-            <img
-              src="/assets/aistudio/logo_27d4fad1.png"
-              alt="Edir Logo"
-              className="w-9 h-9 rounded-full object-cover border border-[#F59E0B] bg-white shrink-0"
-              referrerPolicy="no-referrer"
-            />
-            <span className="font-bold text-sm truncate">
-              {getText(lang, ORG_NAME.shortAm, ORG_NAME.shortEn)}
-            </span>
-          </div>
-
-          <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-1.5">
-            {navItems.map((item) => {
-              const active = activeRoute === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveRoute(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    active
-                      ? 'bg-[#047857] text-white border border-[#F59E0B]/50'
-                      : 'text-white/85 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <span className={active ? 'text-[#F59E0B]' : 'text-white/75'}>
-                    {item.icon}
-                  </span>
-                  <span className="truncate text-left">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Active User Footer */}
-          <div className="p-4 border-t border-white/10 space-y-2.5">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate">
-                {getText(lang, currentUser.fullNameAm, currentUser.fullNameEn)}
-              </p>
-              <p className="text-[11px] text-[#F59E0B] font-semibold truncate">
-                {ROLE_LABELS[currentUser.role][lang]} · {currentUser.memberCode}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setForcePasswordChange(false);
-                setShowChangePassword(true);
-              }}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/15 text-xs font-semibold text-white rounded-lg cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span>{COPY[lang].changePassword}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#047857] hover:bg-[#047857]/80 text-xs font-semibold text-white rounded-lg cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>{COPY[lang].signOut}</span>
-            </button>
-          </div>
-        </aside>
-      )}
-
-      {/* Mobile Drawer for Committee Officers */}
-      {isCommitteeUser && mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex no-print">
-          <div
-            className="fixed inset-0 bg-slate-900/50"
-            onClick={() => setMobileMenuOpen(false)}
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Clean Single-Header Brand Navigation (Zero Cross-Role Sidebar Clutter) */}
+      <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30 no-print">
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src="/assets/aistudio/logo_27d4fad1.png"
+            alt="Edir Logo"
+            className="w-10 h-10 rounded-full object-cover border border-[#D97706] bg-white shrink-0"
+            referrerPolicy="no-referrer"
           />
-          <aside className="relative w-72 max-w-[85vw] bg-[#064E3B] text-white flex flex-col h-full">
-            <div className="h-16 px-4 flex items-center justify-between border-b border-white/10">
-              <span className="font-bold text-sm truncate">
-                {getText(lang, ORG_NAME.shortAm, ORG_NAME.shortEn)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveRoute(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-lg ${
-                    activeRoute === item.id
-                      ? 'bg-[#047857] text-white'
-                      : 'hover:bg-white/10'
-                  }`}
-                >
-                  {item.icon}
-                  <span className="truncate">{item.label}</span>
-                </button>
-              ))}
-            </nav>
-            <div className="p-4 border-t border-white/10 space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setForcePasswordChange(false);
-                  setShowChangePassword(true);
-                }}
-                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-white/10 text-xs font-semibold rounded-lg"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-[#F59E0B]" />
-                <span>{COPY[lang].changePassword}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#047857] text-xs font-semibold rounded-lg"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>{COPY[lang].signOut}</span>
-              </button>
-            </div>
-          </aside>
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-base font-bold text-[#064E3B] truncate">
+              {getRoleModuleTitle()}
+            </h1>
+            <p className="text-[11px] text-slate-500 truncate">
+              {getText(lang, currentUser.fullNameAm, currentUser.fullNameEn)} ·{' '}
+              {ROLE_LABELS[currentUser.role][lang]} · {currentUser.memberCode}
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Clean Brand Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 no-print">
-          <div className="flex items-center gap-3 min-w-0">
-            {isCommitteeUser ? (
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden p-2 -ml-2 text-[#064E3B] hover:bg-slate-100 rounded-lg cursor-pointer"
-                aria-label="Open menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            ) : (
-              <img
-                src="/assets/aistudio/logo_27d4fad1.png"
-                alt="Edir Logo"
-                className="w-9 h-9 rounded-full object-cover border border-[#D97706] shrink-0"
-                referrerPolicy="no-referrer"
+        <div className="flex items-center gap-2 shrink-0">
+          <PWAInstallButton lang={lang} variant="header" />
+          <button
+            type="button"
+            onClick={() => {
+              setForcePasswordChange(false);
+              setShowChangePassword(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#064E3B] bg-[#F59E0B]/15 hover:bg-[#F59E0B]/25 border border-[#D97706]/30 rounded-lg cursor-pointer whitespace-nowrap"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-[#D97706]" />
+            <span className="hidden sm:inline">{COPY[lang].changePassword}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang((l) => (l === 'am' ? 'en' : 'am'))}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#064E3B] hover:bg-[#047857] rounded-lg cursor-pointer whitespace-nowrap"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#F59E0B]" />
+            <span>{COPY[lang].languageToggle}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-lg cursor-pointer whitespace-nowrap"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{COPY[lang].signOut}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Single-Owner Workspace */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Committee Officers are also Edir Members: Clear Role vs Member Self-Service Module Switcher */}
+        {isCommitteeUser && (
+          <div className="bg-white border border-slate-200 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 no-print">
+            <button
+              type="button"
+              onClick={() => setShowPersonalPortal(false)}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-xs sm:text-sm font-bold rounded-lg transition-colors cursor-pointer ${
+                !showPersonalPortal
+                  ? 'bg-[#064E3B] text-white'
+                  : 'bg-white text-[#064E3B] border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <LayoutGrid
+                className={`w-4 h-4 ${
+                  !showPersonalPortal ? 'text-[#F59E0B]' : 'text-[#047857]'
+                }`}
               />
-            )}
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-[#064E3B] truncate">
-                {activeRouteTitle}
-              </h1>
-              <p className="text-[11px] text-slate-500 truncate">
-                {getText(lang, currentUser.fullNameAm, currentUser.fullNameEn)} ·{' '}
-                {currentUser.memberCode}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setForcePasswordChange(false);
-                setShowChangePassword(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#064E3B] bg-[#F59E0B]/15 hover:bg-[#F59E0B]/25 border border-[#D97706]/30 rounded-lg cursor-pointer whitespace-nowrap"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-[#D97706]" />
-              <span className="hidden sm:inline">{COPY[lang].changePassword}</span>
+              <span>
+                {getText(
+                  lang,
+                  `የኮሚቴ ስራዬ (${ROLE_LABELS[currentUser.role].am})`,
+                  `Committee Module (${ROLE_LABELS[currentUser.role].en})`
+                )}
+              </span>
             </button>
             <button
               type="button"
-              onClick={() => setLang((l) => (l === 'am' ? 'en' : 'am'))}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#064E3B] hover:bg-[#047857] rounded-lg cursor-pointer whitespace-nowrap"
+              onClick={() => setShowPersonalPortal(true)}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-xs sm:text-sm font-bold rounded-lg transition-colors cursor-pointer ${
+                showPersonalPortal
+                  ? 'bg-[#064E3B] text-white'
+                  : 'bg-white text-[#064E3B] border border-slate-200 hover:bg-slate-50'
+              }`}
             >
-              <Globe className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span>{COPY[lang].languageToggle}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-lg cursor-pointer whitespace-nowrap"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{COPY[lang].signOut}</span>
+              <IdCard
+                className={`w-4 h-4 ${
+                  showPersonalPortal ? 'text-[#F59E0B]' : 'text-[#D97706]'
+                }`}
+              />
+              <span>
+                {getText(
+                  lang,
+                  'የአባላት መገልገያ (የእኔ ክፍያ፣ ደረሰኝ እና መታወቂያ)',
+                  'Member Self-Service Portal (My Dues, Receipt & ID)'
+                )}
+              </span>
             </button>
           </div>
-        </header>
+        )}
 
-        {/* Viewport Content */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-          {currentUser.role === 'member' || activeRoute === 'member_portal' ? (
-            <MemberSelfServicePortal
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              onSubmitReceipt={handleSubmitReceipt}
-              onSubmitEmergency={handleSubmitEmergency}
-              onSubmitRequest={handleSubmitRequest}
-              onUpdateFamily={handleUpdateFamily}
-              onUpdatePhoto={handleUpdatePhoto}
-              onScanAttendance={handleScanAttendance}
-            />
-          ) : activeRoute === 'overview' ? (
-            <ExecutiveOverview
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              firebaseStatus={firebaseStatus}
-              onSyncFirebase={handleSyncFirebase}
-              onIssueDirective={handleIssueDirective}
-              onResolveEmergency={handleResolveEmergency}
-              onNavigateModule={(route) => setActiveRoute(route)}
-            />
-          ) : activeRoute === 'finance' ? (
-            <FinanceModule
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              onVerifyReceipt={handleVerifyReceipt}
-              onCreateSpecialContribution={handleCreateSpecialContribution}
-              onCreateDisbursement={handleCreateDisbursement}
-              onAuthorizeDisbursement={handleAuthorizeDisbursement}
-              onExecuteDisbursement={handleExecuteDisbursement}
-              onSaveReconciliation={handleSaveReconciliation}
-            />
-          ) : activeRoute === 'members' ? (
-            <MembersAndAdminModule
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              firebaseStatus={firebaseStatus}
-              onRegisterMember={handleRegisterMember}
-              onImportLegacyMembers={handleImportLegacyMembers}
-              onApproveMember={handleApproveMember}
-              onUpdateFamily={handleUpdateFamily}
-              onUpdatePhoto={handleUpdatePhoto}
-              onManageAccess={handleManageAccess}
-              onResetPasswordAndUnlock={handleResetPasswordAndUnlock}
-              onUpdateBillingConfig={handleUpdateBillingConfig}
-              onUpdateBenefitRule={handleUpdateBenefitRule}
-              onSyncFirebase={handleSyncFirebase}
-            />
-          ) : activeRoute === 'operations' ? (
-            <OperationsModule
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              onCreateMeeting={handleCreateMeeting}
-              onCloseMeeting={handleCloseMeeting}
-              onMarkAttendance={handleMarkAttendance}
-              onScanAttendance={handleScanAttendance}
-              onAdvanceRequest={handleAdvanceRequest}
-              onAssetAction={handleAssetAction}
-              onAddAsset={handleAddAsset}
-            />
-          ) : (
-            <InfoAndReportsModule
-              lang={lang}
-              currentUser={currentUser}
-              state={state}
-              onPublishAnnouncement={handlePublishAnnouncement}
-              onUploadDocument={handleUploadDocument}
-              onResolveEmergency={handleResolveEmergency}
-            />
-          )}
-        </main>
-      </div>
+        {renderRoleWorkspace()}
+      </main>
 
       {/* In-App Change Password Modal (Mandatory on First Default-Password Sign-in, Voluntary Anytime) */}
       {showChangePassword && (
@@ -1710,6 +1666,7 @@ export default function App() {
           onPasswordUpdated={handleUpdatePassword}
         />
       )}
+      <OfflineIndicator lang={lang} />
     </div>
   );
 }

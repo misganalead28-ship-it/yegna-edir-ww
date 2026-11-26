@@ -3,12 +3,18 @@ import {
   AlertCircle,
   Bell,
   BookOpen,
+  Building2,
   Calendar,
+  Check,
   CheckCircle2,
+  Copy,
   CreditCard,
   Download,
+  Eye,
+  EyeOff,
   HeartHandshake,
   IdCard,
+  PhoneCall,
   Plus,
   Send,
   Trash2,
@@ -86,6 +92,18 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
   const [receiptFileName, setReceiptFileName] = useState('');
   const [receiptDataUrl, setReceiptDataUrl] = useState('');
   const [payFeedback, setPayFeedback] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyValue = (key: string, value: string) => {
+    navigator.clipboard?.writeText(value).catch(() => {});
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const cbeAccount = state.billingConfig.cbeAccountNumber || '1000772333898';
+  const cbeAccountName =
+    state.billingConfig.cbeAccountName || 'Aleta Wondo Youth Mutual Aid Edir';
+  const coopAccount = state.billingConfig.coopAccountNumber || '1062700129895';
 
   // --- Emergency form state ---
   const [emgType, setEmgType] =
@@ -113,6 +131,14 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
   const [famNameEn, setFamNameEn] = useState('');
   const [famRel, setFamRel] = useState<FamilyMember['relationship']>('spouse');
   const [famAge, setFamAge] = useState(25);
+
+  // --- On-demand visibility toggles (Hide Lists Until Requested) ---
+  const [showBenefitRates, setShowBenefitRates] = useState(false);
+  const [showReceiptsList, setShowReceiptsList] = useState(false);
+  const [showFamilyList, setShowFamilyList] = useState(false);
+  const [showRequestsList, setShowRequestsList] = useState(false);
+  const [showMessagesList, setShowMessagesList] = useState(false);
+  const [showDocsList, setShowDocsList] = useState(false);
 
   // --- Records filter ---
   const [docSearch, setDocSearch] = useState('');
@@ -550,96 +576,117 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
         </div>
       )}
 
-      {/* TAB 2: PAY & UPLOAD RECEIPT */}
+      {/* TAB 2: CLEAR, EASY-TO-USE PAYMENT SCREEN */}
       {tab === 'pay_receipt' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <section className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-              <div className="pb-3 border-b border-slate-100">
-                <h2 className="text-base font-bold text-[#064E3B]">
-                  {getText(lang, 'ያልተከፈሉ ክፍያዎችና ቅጣቶች', 'Itemized Pending Dues')}
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {getText(
-                    lang,
-                    `ወርሃዊ ክፍያ ${formatETB(state.billingConfig.monthlyFee, lang)} · ቅጣት ${formatETB(state.billingConfig.latePenaltyFee, lang)}/ወር`,
-                    `Monthly fee ${formatETB(state.billingConfig.monthlyFee, lang)} · Late penalty ${formatETB(state.billingConfig.latePenaltyFee, lang)}/mo`
-                  )}
-                </p>
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">
-                    {getText(lang, 'ያልተከፈሉ ወራት', 'Unpaid Months')} ({unpaidMonthsAll.length})
-                  </span>
-                  <span className="font-mono font-bold text-slate-900 tabular-nums">
-                    {formatETB(fin.monthlyFeeDue, lang)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-red-700">
-                    {getText(lang, 'አውቶማቲክ የዘገየ ቅጣት', 'Auto Late Penalties')} (
-                    {fin.overdueMonths.length})
-                  </span>
-                  <span className="font-mono font-bold text-red-700 tabular-nums">
-                    {formatETB(fin.autoPenaltyDue, lang)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">
-                    {getText(lang, 'ልዩ መዋጮዎች', 'Special Contributions')} (
-                    {fin.unpaidSpecialContributions.length})
-                  </span>
-                  <span className="font-mono font-bold text-slate-900 tabular-nums">
-                    {formatETB(fin.specialDue, lang)}
-                  </span>
-                </div>
-                <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span className="font-bold text-[#064E3B]">
-                    {getText(lang, 'ጠቅላላ የሚከፈል ድምር', 'Total Balance Due')}
-                  </span>
-                  <span className="text-lg font-bold font-mono text-[#064E3B] tabular-nums">
-                    {formatETB(fin.totalDue, lang)}
-                  </span>
-                </div>
-              </div>
-            </section>
+          {/* 3 Large, Plain Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-2">
+              <p className="text-xs font-semibold text-slate-500">
+                {getText(lang, '1. ወርሃዊ ክፍያ እና ቅጣት', '1. Monthly Due + Auto Penalty')}
+              </p>
+              <p className="text-3xl font-bold font-mono tabular-nums text-[#064E3B]">
+                {formatETB(fin.monthlyFeeDue + fin.autoPenaltyDue, lang)}
+              </p>
+              <p className="text-xs text-slate-600 tabular-nums">
+                {getText(
+                  lang,
+                  `${unpaidMonthsAll.length} ያልተከፈሉ ወራት (${formatETB(fin.monthlyFeeDue, lang)}) · ቅጣት ${formatETB(fin.autoPenaltyDue, lang)}`,
+                  `${unpaidMonthsAll.length} unpaid mo (${formatETB(fin.monthlyFeeDue, lang)}) · Penalty ${formatETB(fin.autoPenaltyDue, lang)}`
+                )}
+              </p>
+            </div>
 
-            <section className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6">
-              <h2 className="text-base font-bold text-[#064E3B] pb-3 mb-4 border-b border-slate-100">
-                {getText(lang, 'ክፍያ መፈጸሚያ እና ደረሰኝ መላኪያ', 'Submit Payment & Upload Receipt')}
-              </h2>
-              <form onSubmit={submitPayment} className="space-y-4">
-                <div className="flex items-center gap-2">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-2">
+              <p className="text-xs font-semibold text-slate-500">
+                {getText(
+                  lang,
+                  '2. ልዩ መዋጮዎች (ሰርግ፣ ሀዘን፣ ወንበር፣ ድንኳን)',
+                  '2. Special Contributions (Wedding, Bereavement, Chair, Tent)'
+                )}
+              </p>
+              <p className="text-3xl font-bold font-mono tabular-nums text-[#D97706]">
+                {formatETB(fin.specialDue, lang)}
+              </p>
+              <p className="text-xs text-slate-600 tabular-nums">
+                {getText(
+                  lang,
+                  `${fin.unpaidSpecialContributions.length} ያልተከፈሉ ልዩ መዋጮዎች`,
+                  `${fin.unpaidSpecialContributions.length} pending special contributions`
+                )}
+              </p>
+            </div>
+
+            <div className="bg-[#064E3B] text-white rounded-xl p-6 space-y-2">
+              <p className="text-xs font-semibold text-[#F59E0B]">
+                {getText(lang, '3. ጠቅላላ የሚከፈል', '3. Total Due')}
+              </p>
+              <p className="text-3xl font-bold font-mono tabular-nums text-white">
+                {formatETB(fin.totalDue, lang)}
+              </p>
+              <p className="text-xs text-white/80 tabular-nums">
+                {fin.totalDue > 0
+                  ? getText(
+                      lang,
+                      `ወርሃዊ ${formatETB(state.billingConfig.monthlyFee, lang)} · ቅጣት ${formatETB(state.billingConfig.latePenaltyFee, lang)}/ወር`,
+                      `Monthly ${formatETB(state.billingConfig.monthlyFee, lang)} · Late penalty ${formatETB(state.billingConfig.latePenaltyFee, lang)}/mo`
+                    )
+                  : getText(lang, 'ሁሉም ክፍያዎች ተከፍለዋል!', 'All dues settled!')}
+              </p>
+            </div>
+          </div>
+
+          {/* Simple 3-Step Payment Flow: 1. Due Amount -> 2. Bank -> 3. Pay */}
+          <section className="bg-white border border-slate-200 rounded-xl p-6">
+            <h2 className="text-base font-bold text-[#064E3B] pb-3 mb-5 border-b border-slate-100">
+              {getText(
+                lang,
+                'ክፍያ መፈፀሚያ — የሚከፈል መጠን፣ ባንክ እና ክፍያ',
+                'Pay Dues — Due Amount, Bank & Pay'
+              )}
+            </h2>
+            <form onSubmit={submitPayment} className="space-y-6">
+              {/* 1. Due Amount */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="block text-xs font-bold text-[#064E3B]">
+                    {getText(lang, '1. የሚከፈል መጠን (Due Amount)', '1. Due Amount')}
+                  </label>
+                  <span className="text-sm font-bold font-mono text-[#D97706] tabular-nums">
+                    {formatETB(computedPayAmount, lang)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setPayType('monthly')}
-                    className={`px-3.5 py-2 text-xs font-semibold rounded-lg cursor-pointer ${
+                    className={`px-4 py-3 text-xs sm:text-sm font-bold rounded-lg border cursor-pointer transition-colors ${
                       payType === 'monthly'
-                        ? 'bg-[#064E3B] text-white'
-                        : 'bg-slate-100 text-slate-700'
+                        ? 'bg-[#064E3B] border-[#064E3B] text-white'
+                        : 'bg-white border-slate-200 text-[#064E3B] hover:bg-slate-50'
                     }`}
                   >
-                    {getText(lang, 'ወርሃዊ ክፍያ እና ቅጣት', 'Monthly Dues & Penalties')}
+                    {getText(lang, 'ወርሃዊ ክፍያ እና ቅጣት', 'Monthly Due & Auto Penalty')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setPayType('special')}
-                    className={`px-3.5 py-2 text-xs font-semibold rounded-lg cursor-pointer ${
+                    className={`px-4 py-3 text-xs sm:text-sm font-bold rounded-lg border cursor-pointer transition-colors ${
                       payType === 'special'
-                        ? 'bg-[#064E3B] text-white'
-                        : 'bg-slate-100 text-slate-700'
+                        ? 'bg-[#064E3B] border-[#064E3B] text-white'
+                        : 'bg-white border-slate-200 text-[#064E3B] hover:bg-slate-50'
                     }`}
                   >
-                    {getText(lang, 'ልዩ መዋጮ', 'Special Contribution')}
+                    {getText(
+                      lang,
+                      'ልዩ መዋጮ (ሰርግ፣ ሀዘን፣ ወንበር፣ ድንኳን)',
+                      'Special Contribution (Wedding, Bereavement, Chair, Tent)'
+                    )}
                   </button>
                 </div>
 
                 {payType === 'monthly' ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#064E3B] mb-2">
-                      {getText(lang, 'የሚከፍሉባቸውን ወራት ይምረጡ', 'Select Months to Settle')}
-                    </label>
+                  <div className="pt-1">
                     {unpaidMonthsAll.length === 0 ? (
                       <p className="text-xs text-[#047857] font-semibold">
                         {getText(lang, 'ሁሉም ወርሃዊ ክፍያዎች ተከፍለዋል!', 'All active monthly dues are settled!')}
@@ -660,7 +707,7 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                                     : [...prev, m]
                                 )
                               }
-                              className={`px-3 py-1.5 text-xs rounded-lg border cursor-pointer font-semibold ${
+                              className={`px-3.5 py-2 text-xs rounded-lg border cursor-pointer font-semibold ${
                                 checked
                                   ? 'bg-[#064E3B] border-[#064E3B] text-white'
                                   : isOverdue
@@ -680,7 +727,7 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                   <select
                     value={selectedSpecialId}
                     onChange={(e) => setSelectedSpecialId(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg"
+                    className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white"
                   >
                     {fin.unpaidSpecialContributions.length === 0 && (
                       <option value="">
@@ -694,43 +741,195 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                     ))}
                   </select>
                 )}
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <select
-                    value={channel}
-                    onChange={(e) =>
-                      setChannel(e.target.value as PaymentReceipt['channel'])
-                    }
-                    className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
-                  >
-                    <option value="CBE">CBE (Commercial Bank)</option>
-                    <option value="Telebirr">Telebirr</option>
-                    <option value="Bank of Abyssinia">Bank of Abyssinia</option>
-                    <option value="Cashier Direct">Cashier Direct</option>
-                  </select>
-                  <input
-                    type="text"
-                    required
-                    value={refNumber}
-                    onChange={(e) => setRefNumber(e.target.value)}
-                    placeholder="Ref No. (FT26...)"
-                    className="px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg"
-                  />
-                  <input
-                    type="date"
-                    value={payDate}
-                    onChange={(e) => setPayDate(e.target.value)}
-                    className="px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg"
-                  />
+              {/* 2. Bank Selection (CBE & Coop only) */}
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                <label className="block text-xs font-bold text-[#064E3B]">
+                  {getText(lang, '2. ባንክ ይምረጡ (Bank)', '2. Select Bank')}
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(
+                    [
+                      {
+                        id: 'CBE',
+                        titleAm: 'CBE (የኢትዮጵያ ንግድ ባንክ)',
+                        titleEn: 'CBE (Commercial Bank of Ethiopia)',
+                        account: cbeAccount,
+                      },
+                      {
+                        id: 'Coop',
+                        titleAm: 'Coop (ኮኦፕ ባንክ)',
+                        titleEn: 'Coop (Cooperative Bank of Oromia)',
+                        account: coopAccount,
+                      },
+                    ] as const
+                  ).map((bank) => {
+                    const active = channel === bank.id;
+                    return (
+                      <button
+                        key={bank.id}
+                        type="button"
+                        onClick={() => setChannel(bank.id)}
+                        className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border text-left cursor-pointer transition-colors ${
+                          active
+                            ? 'bg-[#064E3B] border-[#064E3B] text-white'
+                            : 'bg-white border-slate-200 text-[#064E3B] hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Building2
+                            className={`w-5 h-5 shrink-0 ${
+                              active ? 'text-[#F59E0B]' : 'text-[#047857]'
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs sm:text-sm font-bold truncate">
+                              {getText(lang, bank.titleAm, bank.titleEn)}
+                            </p>
+                            <p
+                              className={`text-xs font-mono tabular-nums ${
+                                active ? 'text-[#F59E0B]' : 'text-slate-600'
+                              }`}
+                            >
+                              {bank.account}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                  <label className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#064E3B] bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
-                    <Upload className="w-4 h-4" />
+                {/* Selected Bank Payment Details */}
+                <div className="p-5 bg-slate-50 border border-[#064E3B]/20 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-[#064E3B]">
+                      {channel === 'CBE'
+                        ? getText(
+                            lang,
+                            'የኢትዮጵያ ንግድ ባንክ (CBE)',
+                            'Commercial Bank of Ethiopia (CBE)'
+                          )
+                        : getText(
+                            lang,
+                            'ኮኦፕ ባንክ (Coop Bank)',
+                            'Cooperative Bank of Oromia (Coop)'
+                          )}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {getText(lang, 'የተቀባይ ስም፡ ', 'Account Name: ')}
+                      <strong className="text-slate-900">{cbeAccountName}</strong>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-xs text-slate-600">
+                        {getText(lang, 'የሂሳብ ቁጥር፡', 'Account No:')}
+                      </span>
+                      <code className="px-2.5 py-1 bg-white border border-slate-200 rounded-md text-sm font-mono font-bold text-[#064E3B] select-all">
+                        {channel === 'CBE' ? cbeAccount : coopAccount}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyValue(
+                            'account',
+                            channel === 'CBE' ? cbeAccount : coopAccount
+                          )
+                        }
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-[#064E3B] rounded-md cursor-pointer"
+                      >
+                        {copiedKey === 'account' ? (
+                          <Check className="w-3.5 h-3.5 text-[#047857]" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          {copiedKey === 'account'
+                            ? COPY[lang].copied
+                            : getText(lang, 'ቁጥር ቅዳ', 'Copy')}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => copyValue('amount', String(computedPayAmount))}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-xs font-bold text-[#064E3B] rounded-lg cursor-pointer"
+                    >
+                      {copiedKey === 'amount' ? (
+                        <Check className="w-3.5 h-3.5 text-[#047857]" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span className="font-mono tabular-nums">
+                        {copiedKey === 'amount'
+                          ? COPY[lang].copied
+                          : formatETB(computedPayAmount, lang)}
+                      </span>
+                    </button>
+
+                    <a
+                      href={channel === 'CBE' ? 'tel:*889%23' : 'tel:*841%23'}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#D97706] hover:bg-[#F59E0B] text-white text-xs font-bold rounded-lg whitespace-nowrap"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" />
+                      <span>
+                        {channel === 'CBE'
+                          ? getText(lang, 'በCBE (*889#) ክፈል', 'Pay via *889#')
+                          : getText(lang, 'በCoop (*841#) ክፈል', 'Pay via *841#')}
+                      </span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Pay & Confirm */}
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                <label className="block text-xs font-bold text-[#064E3B]">
+                  {getText(
+                    lang,
+                    '3. ክፍያ ይፈጽሙ እና ደረሰኝ ያስገቡ (Pay)',
+                    '3. Pay & Submit Reference'
+                  )}
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {getText(lang, 'የግብይት መለያ ቁጥር (Ref No.)', 'Transaction Reference')}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={refNumber}
+                      onChange={(e) => setRefNumber(e.target.value)}
+                      placeholder={channel === 'CBE' ? 'FT26...' : 'COOP...'}
+                      className="w-full px-3 py-2.5 text-sm font-mono border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {getText(lang, 'የክፍያ ቀን', 'Payment Date')}
+                    </label>
+                    <input
+                      type="date"
+                      value={payDate}
+                      onChange={(e) => setPayDate(e.target.value)}
+                      className="w-full px-3 py-2.5 text-sm font-mono border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-100">
+                  <label className="inline-flex items-center gap-2 px-4 py-3 text-xs font-semibold text-[#064E3B] bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+                    <Upload className="w-4 h-4 text-[#047857]" />
                     <span>
                       {receiptFileName
                         ? receiptFileName
-                        : getText(lang, 'ደረሰኝ አታች (Image / PDF)', 'Attach Receipt')}
+                        : getText(lang, 'ደረሰኝ አታች (Image / PDF)', 'Attach Receipt File')}
                     </span>
                     <input
                       type="file"
@@ -740,16 +939,22 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                     />
                   </label>
 
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold font-mono text-[#064E3B] tabular-nums">
-                      {formatETB(computedPayAmount, lang)}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="text-left sm:text-right">
+                      <p className="text-[11px] text-slate-500">
+                        {channel} · {getText(lang, 'የሚከፈል መጠን', 'Due Amount')}
+                      </p>
+                      <p className="text-lg font-bold font-mono text-[#064E3B] tabular-nums">
+                        {formatETB(computedPayAmount, lang)}
+                      </p>
+                    </div>
                     <button
                       type="submit"
                       disabled={computedPayAmount <= 0}
-                      className="px-5 py-2.5 bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#064E3B] hover:bg-[#047857] text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50"
                     >
-                      {getText(lang, 'ደረሰኝ ላክ', 'Submit Receipt')}
+                      <Send className="w-4 h-4 text-[#F59E0B]" />
+                      <span>{getText(lang, 'ክፍያ ላክ / Pay', 'Pay & Submit')}</span>
                     </button>
                   </div>
                 </div>
@@ -759,96 +964,145 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                     {payFeedback}
                   </div>
                 )}
-              </form>
-            </section>
-          </div>
-
-          {/* Benefit Payout Schedule */}
-          <section className="bg-white border border-slate-200 rounded-xl p-6">
-            <h3 className="text-base font-bold text-[#064E3B] pb-3 mb-4 border-b border-slate-100">
-              {getText(
-                lang,
-                'ለእድሩ አባላት የሚፈፀሙ የመረዳጃ ክፍያዎች መርሃ-ግብር',
-                'Benefit Payout Schedule (Edir Entitlements)'
-              )}
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[#064E3B] font-bold">
-                    <th className="py-2.5 px-3">{getText(lang, 'የክፍያ አይነት', 'Category')}</th>
-                    <th className="py-2.5 px-3">{getText(lang, 'ዝርዝር', 'Description')}</th>
-                    <th className="py-2.5 px-3 text-right">{getText(lang, 'መጠን', 'Payout Amount')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {state.benefitRules.map((b) => (
-                    <tr key={b.id}>
-                      <td className="py-3 px-3 font-bold text-slate-900">
-                        {getText(lang, b.categoryAm, b.categoryEn)}
-                      </td>
-                      <td className="py-3 px-3 text-slate-600">
-                        {getText(lang, b.descriptionAm, b.descriptionEn)}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-[#047857] tabular-nums whitespace-nowrap">
-                        {formatETB(b.amount, lang)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              </div>
+            </form>
           </section>
 
-          {/* Receipt History */}
-          <section className="bg-white border border-slate-200 rounded-xl p-6">
-            <h3 className="text-base font-bold text-[#064E3B] pb-3 mb-4 border-b border-slate-100">
-              {getText(lang, 'የእርስዎ የክፍያ ደረሰኞች ታሪክ', 'Your Submitted Payment Receipts')}
-            </h3>
-            {myReceipts.length === 0 ? (
-              <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
-            ) : (
+          {/* On-Demand Action Buttons: View Benefit Payout Rates + View Submitted Receipts */}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowBenefitRates((v) => !v)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs sm:text-sm font-bold rounded-lg cursor-pointer"
+            >
+              {showBenefitRates ? (
+                <EyeOff className="w-4 h-4 text-[#D97706]" />
+              ) : (
+                <Eye className="w-4 h-4 text-[#047857]" />
+              )}
+              <span>
+                {showBenefitRates
+                  ? getText(lang, 'የጥቅማጥቅም ክፍያ መጠን ደብቅ', 'Hide Benefit Payout Rates')
+                  : getText(
+                      lang,
+                      'የጥቅማጥቅም ክፍያ መጠን ይመልከቱ',
+                      'View Benefit Payout Rates'
+                    )}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowReceiptsList((v) => !v)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs sm:text-sm font-bold rounded-lg cursor-pointer"
+            >
+              {showReceiptsList ? (
+                <EyeOff className="w-4 h-4 text-[#D97706]" />
+              ) : (
+                <Eye className="w-4 h-4 text-[#047857]" />
+              )}
+              <span>
+                {showReceiptsList
+                  ? getText(lang, 'የተላኩ ደረሰኞችን ደብቅ', 'Hide Submitted Receipts')
+                  : getText(
+                      lang,
+                      `የተላኩ ደረሰኞች ዝርዝር አሳይ (${myReceipts.length})`,
+                      `View Submitted Receipts (${myReceipts.length})`
+                    )}
+              </span>
+            </button>
+          </div>
+
+          {/* On-Demand Benefit Payout Schedule (Hidden by default) */}
+          {showBenefitRates && (
+            <section className="bg-white border border-slate-200 rounded-xl p-6">
+              <h3 className="text-base font-bold text-[#064E3B] pb-3 mb-4 border-b border-slate-100">
+                {getText(
+                  lang,
+                  'ለእድሩ አባላት የሚፈፀሙ የመረዳጃ ክፍያዎች መርሃ-ግብር',
+                  'Benefit Payout Schedule (Edir Entitlements)'
+                )}
+              </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-[#064E3B] font-bold">
-                      <th className="py-2.5 px-3">{getText(lang, 'ቀን', 'Date')}</th>
-                      <th className="py-2.5 px-3">{getText(lang, 'መንገድ / Ref', 'Channel & Ref')}</th>
-                      <th className="py-2.5 px-3 text-right">{getText(lang, 'መጠን', 'Amount')}</th>
-                      <th className="py-2.5 px-3 text-right">{getText(lang, 'ሁኔታ', 'Status')}</th>
+                      <th className="py-2.5 px-3">{getText(lang, 'የክፍያ አይነት', 'Category')}</th>
+                      <th className="py-2.5 px-3">{getText(lang, 'ዝርዝር', 'Description')}</th>
+                      <th className="py-2.5 px-3 text-right">{getText(lang, 'መጠን', 'Payout Amount')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {myReceipts.map((r) => (
-                      <tr key={r.id}>
-                        <td className="py-2.5 px-3 font-mono tabular-nums">{r.paymentDate}</td>
-                        <td className="py-2.5 px-3">
-                          <span className="font-semibold text-slate-800">{r.channel}</span> ·{' '}
-                          <span className="font-mono text-slate-500">{r.referenceNumber}</span>
+                    {state.benefitRules.map((b) => (
+                      <tr key={b.id}>
+                        <td className="py-3 px-3 font-bold text-slate-900">
+                          {getText(lang, b.categoryAm, b.categoryEn)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold tabular-nums">
-                          {formatETB(r.amount, lang)}
+                        <td className="py-3 px-3 text-slate-600">
+                          {getText(lang, b.descriptionAm, b.descriptionEn)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-semibold">
-                          <span
-                            className={
-                              r.status === 'verified'
-                                ? 'text-[#047857]'
-                                : r.status === 'rejected'
-                                ? 'text-red-700'
-                                : 'text-[#D97706]'
-                            }
-                          >
-                            {COPY[lang][r.status]}
-                          </span>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-[#047857] tabular-nums whitespace-nowrap">
+                          {formatETB(b.amount, lang)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
-          </section>
+            </section>
+          )}
+
+          {/* On-Demand Receipt History (Hidden by default) */}
+          {showReceiptsList && (
+            <section className="bg-white border border-slate-200 rounded-xl p-6">
+              <h3 className="text-base font-bold text-[#064E3B] pb-3 mb-4 border-b border-slate-100">
+                {getText(lang, 'የእርስዎ የክፍያ ደረሰኞች ታሪክ', 'Your Submitted Payment Receipts')}
+              </h3>
+              {myReceipts.length === 0 ? (
+                <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-[#064E3B] font-bold">
+                        <th className="py-2.5 px-3">{getText(lang, 'ቀን', 'Date')}</th>
+                        <th className="py-2.5 px-3">{getText(lang, 'መንገድ / Ref', 'Channel & Ref')}</th>
+                        <th className="py-2.5 px-3 text-right">{getText(lang, 'መጠን', 'Amount')}</th>
+                        <th className="py-2.5 px-3 text-right">{getText(lang, 'ሁኔታ', 'Status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {myReceipts.map((r) => (
+                        <tr key={r.id}>
+                          <td className="py-2.5 px-3 font-mono tabular-nums">{r.paymentDate}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-slate-800">{r.channel}</span> ·{' '}
+                            <span className="font-mono text-slate-500">{r.referenceNumber}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold tabular-nums">
+                            {formatETB(r.amount, lang)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold">
+                            <span
+                              className={
+                                r.status === 'verified'
+                                  ? 'text-[#047857]'
+                                  : r.status === 'rejected'
+                                  ? 'text-red-700'
+                                  : 'text-[#D97706]'
+                              }
+                            >
+                              {COPY[lang][r.status]}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       )}
 
@@ -909,36 +1163,64 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
                 </div>
               </form>
 
-              {currentUser.familyMembers.length === 0 ? (
-                <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
-              ) : (
-                <div className="divide-y divide-slate-100 text-xs">
-                  {currentUser.familyMembers.map((f) => (
-                    <div key={f.id} className="py-2.5 flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          {getText(lang, f.fullNameAm, f.fullNameEn)}
-                        </p>
-                        <p className="text-slate-500 capitalize">
-                          {f.relationship} · {getText(lang, 'ዕድሜ', 'Age')} {f.age}
-                        </p>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-600 tabular-nums">
+                  {getText(
+                    lang,
+                    `የተመዘገቡ ቤተሰቦች፡ ${currentUser.familyMembers.length}`,
+                    `Registered dependents: ${currentUser.familyMembers.length}`
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowFamilyList((v) => !v)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs font-semibold rounded-lg cursor-pointer"
+                >
+                  {showFamilyList ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {showFamilyList
+                      ? getText(lang, 'ዝርዝር ደብቅ', 'Hide List')
+                      : getText(lang, 'ዝርዝር አሳይ', 'View List')}
+                  </span>
+                </button>
+              </div>
+
+              {showFamilyList && (
+                currentUser.familyMembers.length === 0 ? (
+                  <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 text-xs">
+                    {currentUser.familyMembers.map((f) => (
+                      <div key={f.id} className="py-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {getText(lang, f.fullNameAm, f.fullNameEn)}
+                          </p>
+                          <p className="text-slate-500 capitalize">
+                            {f.relationship} · {getText(lang, 'ዕድሜ', 'Age')} {f.age}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateFamily(
+                              currentUser.id,
+                              currentUser.familyMembers.filter((x) => x.id !== f.id)
+                            )
+                          }
+                          className="inline-flex items-center gap-1 text-red-700 hover:underline cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{getText(lang, 'አስወግድ', 'Remove')}</span>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateFamily(
-                            currentUser.id,
-                            currentUser.familyMembers.filter((x) => x.id !== f.id)
-                          )
-                        }
-                        className="inline-flex items-center gap-1 text-red-700 hover:underline cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>{getText(lang, 'አስወግድ', 'Remove')}</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )
               )}
             </section>
 
@@ -1102,17 +1384,47 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
               )}
             </form>
 
-            {myRequests.length > 0 && (
-              <div className="pt-4 border-t border-slate-100 divide-y divide-slate-200">
-                {myRequests.map((req) => (
-                  <div key={req.id} className="py-4 first:pt-0 last:pb-0 space-y-2">
-                    <p className="text-sm font-bold text-slate-900">
-                      {getText(lang, req.subjectAm, req.subjectEn)}
-                    </p>
-                    <ApprovalStepper steps={getRequestStepper(req)} lang={lang} />
-                  </div>
-                ))}
-              </div>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-600 tabular-nums">
+                {getText(
+                  lang,
+                  `የቀረቡ ጥያቄዎች፡ ${myRequests.length}`,
+                  `Submitted requests: ${myRequests.length}`
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRequestsList((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs font-semibold rounded-lg cursor-pointer"
+              >
+                {showRequestsList ? (
+                  <EyeOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {showRequestsList
+                    ? getText(lang, 'ዝርዝር ደብቅ', 'Hide List')
+                    : getText(lang, 'የጥያቄዎች ዝርዝር አሳይ', 'View My Requests')}
+                </span>
+              </button>
+            </div>
+
+            {showRequestsList && (
+              myRequests.length === 0 ? (
+                <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
+              ) : (
+                <div className="pt-2 divide-y divide-slate-200">
+                  {myRequests.map((req) => (
+                    <div key={req.id} className="py-4 first:pt-0 last:pb-0 space-y-2">
+                      <p className="text-sm font-bold text-slate-900">
+                        {getText(lang, req.subjectAm, req.subjectEn)}
+                      </p>
+                      <ApprovalStepper steps={getRequestStepper(req)} lang={lang} />
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </section>
         </div>
@@ -1154,130 +1466,194 @@ export const MemberSelfServicePortal: React.FC<MemberSelfServicePortalProps> = (
             </div>
           </section>
 
-          {/* Official Committee Messages */}
-          <section className="bg-white border border-slate-200 rounded-xl p-6 space-y-3">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Bell className="w-5 h-5 text-[#D97706]" />
-              <h3 className="text-base font-bold text-[#064E3B]">
-                {getText(lang, 'ከኮሚቴ የተላኩ መልዕክቶች', 'Official Committee Messages')}
-              </h3>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {state.announcements.map((ann) => (
-                <article key={ann.id} className="py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span
-                      className={
-                        ann.priority === 'urgent'
-                          ? 'text-red-700 font-bold'
-                          : 'text-[#047857] font-semibold'
-                      }
-                    >
-                      {ann.priority === 'urgent'
-                        ? getText(lang, 'አስቸኳይ', 'Urgent')
-                        : ann.category.toUpperCase()}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono">{ann.createdAt}</span>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-900 mt-1">
-                    {getText(lang, ann.titleAm, ann.titleEn)}
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    {getText(lang, ann.bodyAm, ann.bodyEn)}
+          {/* Official Committee Messages (Hidden Until Requested) */}
+          <section className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-[#D97706]" />
+                <div>
+                  <h3 className="text-base font-bold text-[#064E3B]">
+                    {getText(lang, 'ከኮሚቴ የተላኩ መልዕክቶች', 'Official Committee Messages')}
+                  </h3>
+                  <p className="text-xs text-slate-500 tabular-nums">
+                    {getText(
+                      lang,
+                      `ጠቅላላ መልዕክቶች፡ ${state.announcements.length}`,
+                      `Total announcements: ${state.announcements.length}`
+                    )}
                   </p>
-                </article>
-              ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMessagesList((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs font-semibold rounded-lg cursor-pointer"
+              >
+                {showMessagesList ? (
+                  <EyeOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {showMessagesList
+                    ? getText(lang, 'ዝርዝር ደብቅ', 'Hide Messages')
+                    : getText(lang, 'ዝርዝር አሳይ', 'View List')}
+                </span>
+              </button>
             </div>
+
+            {showMessagesList && (
+              <div className="divide-y divide-slate-100 pt-2 border-t border-slate-100">
+                {state.announcements.map((ann) => (
+                  <article key={ann.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span
+                        className={
+                          ann.priority === 'urgent'
+                            ? 'text-red-700 font-bold'
+                            : 'text-[#047857] font-semibold'
+                        }
+                      >
+                        {ann.priority === 'urgent'
+                          ? getText(lang, 'አስቸኳይ', 'Urgent')
+                          : ann.category.toUpperCase()}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-mono">{ann.createdAt}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 mt-1">
+                      {getText(lang, ann.titleAm, ann.titleEn)}
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {getText(lang, ann.bodyAm, ann.bodyEn)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
-          {/* Bylaws & Minutes Viewer */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <section className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-              <h3 className="text-base font-bold text-[#064E3B]">
-                {getText(lang, 'መተዳደሪያ ደንብ እና ቃለ ጉባኤ', 'Edir Records & Bylaws')}
-              </h3>
-              <input
-                type="text"
-                value={docSearch}
-                onChange={(e) => setDocSearch(e.target.value)}
-                placeholder={getText(lang, 'ሰነድ ይፈልጉ...', 'Search documents...')}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
-              />
-              <div className="flex flex-wrap gap-1">
-                {['all', 'bylaws', 'minutes', 'financial'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setDocFilter(t)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md cursor-pointer ${
-                      docFilter === t
-                        ? 'bg-[#064E3B] text-white'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {t === 'all'
-                      ? getText(lang, 'ሁሉም', 'All')
-                      : t === 'bylaws'
-                      ? getText(lang, 'ደንብ', 'Bylaws')
-                      : t === 'minutes'
-                      ? getText(lang, 'ቃለ ጉባኤ', 'Minutes')
-                      : getText(lang, 'ፋይናንስ', 'Financial')}
-                  </button>
-                ))}
+          {/* Bylaws & Minutes Viewer (Search or Click View List) */}
+          <section className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-[#064E3B]">
+                  {getText(lang, 'መተዳደሪያ ደንብ እና ቃለ ጉባኤ', 'Edir Records & Bylaws')}
+                </h3>
+                <p className="text-xs text-slate-500 tabular-nums">
+                  {getText(
+                    lang,
+                    `ጠቅላላ ሰነዶች፡ ${state.documents.length}`,
+                    `Archived documents: ${state.documents.length}`
+                  )}
+                </p>
               </div>
-              <div className="divide-y divide-slate-100">
-                {filteredDocs.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => setPreviewDocId(d.id)}
-                    className={`w-full text-left py-2.5 px-2 rounded-lg cursor-pointer ${
-                      activeDoc?.id === d.id ? 'bg-[#064E3B]/10' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <p className="text-xs font-bold text-slate-900">
-                      {getText(lang, d.titleAm, d.titleEn)}
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-mono">
-                      {d.year} · {d.fileSizeLabel}
-                    </p>
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={docSearch}
+                  onChange={(e) => setDocSearch(e.target.value)}
+                  placeholder={getText(lang, 'ሰነድ ይፈልጉ...', 'Search documents...')}
+                  className="px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDocsList((v) => !v)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-[#064E3B] text-xs font-semibold rounded-lg cursor-pointer"
+                >
+                  {showDocsList ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {showDocsList
+                      ? getText(lang, 'ዝርዝር ደብቅ', 'Hide Documents')
+                      : getText(lang, 'ዝርዝር አሳይ', 'View List')}
+                  </span>
+                </button>
               </div>
-            </section>
+            </div>
 
-            <section className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6">
-              {activeDoc ? (
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
-                    <div>
-                      <h4 className="text-base font-bold text-[#064E3B]">
-                        {getText(lang, activeDoc.titleAm, activeDoc.titleEn)}
-                      </h4>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">
-                        {activeDoc.fileName} · {activeDoc.uploadedAt}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => downloadDoc(activeDoc)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-semibold rounded-lg cursor-pointer shrink-0"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{getText(lang, 'አውርድ', 'Download')}</span>
-                    </button>
+            {(showDocsList || docSearch.trim().length > 0 || docFilter !== 'all') && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-3 border-t border-slate-100">
+                <div className="lg:col-span-5 space-y-3">
+                  <div className="flex flex-wrap gap-1">
+                    {['all', 'bylaws', 'minutes', 'financial'].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setDocFilter(t)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md cursor-pointer ${
+                          docFilter === t
+                            ? 'bg-[#064E3B] text-white'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {t === 'all'
+                          ? getText(lang, 'ሁሉም', 'All')
+                          : t === 'bylaws'
+                          ? getText(lang, 'ደንብ', 'Bylaws')
+                          : t === 'minutes'
+                          ? getText(lang, 'ቃለ ጉባኤ', 'Minutes')
+                          : getText(lang, 'ፋይናንስ', 'Financial')}
+                      </button>
+                    ))}
                   </div>
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 whitespace-pre-line leading-relaxed">
-                    {activeDoc.textPreview ||
-                      getText(lang, 'ፋይሉ ለማውረድ ዝግጁ ነው።', 'File ready for download.')}
+                  <div className="divide-y divide-slate-100">
+                    {filteredDocs.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setPreviewDocId(d.id)}
+                        className={`w-full text-left py-2.5 px-2 rounded-lg cursor-pointer ${
+                          activeDoc?.id === d.id ? 'bg-[#064E3B]/10' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <p className="text-xs font-bold text-slate-900">
+                          {getText(lang, d.titleAm, d.titleEn)}
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {d.year} · {d.fileSizeLabel}
+                        </p>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
-              )}
-            </section>
-          </div>
+
+                <div className="lg:col-span-7">
+                  {activeDoc ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
+                        <div>
+                          <h4 className="text-base font-bold text-[#064E3B]">
+                            {getText(lang, activeDoc.titleAm, activeDoc.titleEn)}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">
+                            {activeDoc.fileName} · {activeDoc.uploadedAt}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => downloadDoc(activeDoc)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-semibold rounded-lg cursor-pointer shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{getText(lang, 'አውርድ', 'Download')}</span>
+                        </button>
+                      </div>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 whitespace-pre-line leading-relaxed">
+                        {activeDoc.textPreview ||
+                          getText(lang, 'ፋይሉ ለማውረድ ዝግጁ ነው።', 'File ready for download.')}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">{COPY[lang].noRecords}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       )}
     </div>

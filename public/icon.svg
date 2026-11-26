@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Aleta Wondo Youth Mutual Aid Edir">
+  <rect width="128" height="128" rx="28" fill="#064E3B"/>
+  <circle cx="64" cy="64" r="50" fill="#FFFFFF" stroke="#D97706" stroke-width="5"/>
+  <circle cx="64" cy="64" r="41" fill="#064E3B"/>
+  <path d="M31 74c8-14 19-22 33-22s25 8 33 22v14H31V74z" fill="#047857"/>
+  <circle cx="80" cy="40" r="7" fill="#F59E0B"/>
+  <g fill="#F59E0B">
+    <circle cx="46" cy="59" r="6"/>
+    <circle cx="64" cy="55" r="6.5"/>
+    <circle cx="82" cy="59" r="6"/>
+    <path d="M38 71c0-4 3.5-7 8-7s8 3 8 7v17H38V71z" fill="#FFFFFF"/>
+    <path d="M55 68c0-4.5 4-8 9-8s9 3.5 9 8v20H55V68z" fill="#F59E0B"/>
+    <path d="M74 71c0-4 3.5-7 8-7s8 3 8 7v17H74V71z" fill="#D97706"/>
+  </g>
+</svg>

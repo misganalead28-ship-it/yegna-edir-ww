@@ -10,6 +10,8 @@ import { auth } from '../firebase';
 import { Language, MemberRecord } from '../types';
 import { COPY, ORG_NAME, getText } from '../i18n';
 import { DEFAULT_TEMP_PASSWORD, verifyPassword } from '../utils/password';
+import { PWAInstallButton } from './PWAInstallButton';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export interface GoogleAuthPayload {
   email: string;
@@ -252,14 +254,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {getText(lang, ORG_NAME.shortAm, ORG_NAME.shortEn)}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onToggleLang}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#064E3B] bg-[#F59E0B] hover:bg-[#D97706] hover:text-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            <Globe className="w-4 h-4" />
-            <span>{COPY[lang].languageToggle}</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PWAInstallButton lang={lang} variant="darkHeader" />
+            <button
+              type="button"
+              onClick={onToggleLang}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#064E3B] bg-[#F59E0B] hover:bg-[#D97706] hover:text-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <Globe className="w-4 h-4" />
+              <span>{COPY[lang].languageToggle}</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -403,6 +408,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </p>
         </section>
       </main>
+      <OfflineIndicator lang={lang} />
     </div>
   );
 };
